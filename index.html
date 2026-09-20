@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 模型对比实验 · 杭州城市宣传广告</title>
+<style>
+  :root{
+    --bg:#0E1210;
+    --bg-2:#121613;
+    --panel:#171C18;
+    --panel-2:#1D231E;
+    --line:#2A302B;
+    --line-soft:#232824;
+    --text:#E8E5DC;
+    --muted:#8C9088;
+    --muted-2:#5F655E;
+    --gold:#C9A45C;
+    --gold-soft:#A98A4B;
+    --serif:"Source Han Serif SC","Noto Serif SC","Songti SC","STSong",serif;
+    --sans:"Source Han Sans CN","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Menlo","Consolas",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== 舞台 ===== */
+  .stage{position:fixed;inset:0;overflow:hidden;}
+  .stage::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(1100px 700px at 78% -8%, rgba(201,164,92,.10), transparent 60%),
+      radial-gradient(900px 600px at 8% 108%, rgba(78,110,93,.14), transparent 55%);
+  }
+  /* 极淡的噪点纹理，避免纯色廉价感 */
+  .stage::after{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  /* ===== 幻灯片 ===== */
+  .slide{
+    position:absolute;inset:0;padding:56px 60px 72px;
+    display:flex;flex-direction:column;align-items:center;opacity:0;visibility:hidden;
+    transform:scale(.985);
+    transition:opacity .55s cubic-bezier(.22,.61,.36,1), transform .55s cubic-bezier(.22,.61,.36,1), visibility .55s;
+    overflow-y:auto;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:scale(1);}
+  .wrap{width:100%;max-width:1360px;margin:auto 0;}
+
+  /* ===== 页头 ===== */
+  .eyebrow{
+    font-size:12px;letter-spacing:.28em;color:var(--gold);font-weight:600;
+    display:flex;align-items:center;gap:12px;text-transform:uppercase;
+  }
+  .eyebrow::after{content:"";height:1px;width:44px;background:var(--gold);opacity:.5;}
+  h1{
+    font-family:var(--serif);font-size:clamp(30px,4.2vw,54px);line-height:1.12;
+    font-weight:700;color:var(--text);margin-top:14px;letter-spacing:.01em;
+  }
+  h1 em{font-style:normal;color:var(--gold);}
+  .sub{font-size:clamp(13px,1.5vw,16px);color:var(--muted);margin-top:12px;}
+
+  /* ===== 打字机 Prompt ===== */
+  .prompt-stage{
+    margin-top:34px;display:flex;justify-content:center;
+  }
+  .prompt-box{
+    display:inline-flex;align-items:center;gap:0;
+    font-family:var(--mono);font-size:clamp(15px,1.9vw,22px);color:var(--text);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:18px 26px;max-width:92%;letter-spacing:.02em;
+  }
+  .prompt-box .quote{color:var(--gold);font-family:var(--serif);font-size:1.35em;margin-right:2px;}
+  .cursor{
+    display:inline-block;width:.6em;height:1.2em;background:var(--gold);
+    margin-left:2px;vertical-align:-.18em;animation:blink 1s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
+
+  /* ===== 三屏 ===== */
+  .screens{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:38px;}
+  .screen{display:flex;flex-direction:column;gap:14px;opacity:0;transform:translateY(26px);}
+  .slide.active .screen{animation:rise .7s cubic-bezier(.22,.61,.36,1) forwards;}
+  .slide.active .screen:nth-child(1){animation-delay:.25s;}
+  .slide.active .screen:nth-child(2){animation-delay:.42s;}
+  .slide.active .screen:nth-child(3){animation-delay:.59s;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+
+  .screen-head{display:flex;align-items:center;gap:10px;justify-content:center;}
+  .screen-head .logo{height:20px;max-width:60%;object-fit:contain;filter:brightness(0) invert(1);opacity:.9;}
+  .screen-head .logo.gold-filter{filter:none;border-radius:4px;}
+  .screen-head .nm{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--text);}
+  .screen-head .tp{font-size:11px;color:var(--muted-2);margin-left:2px;}
+
+  .shot-wrap{
+    position:relative;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:8px;cursor:zoom-in;
+    transition:transform .35s cubic-bezier(.22,.61,.36,1), border-color .35s, box-shadow .35s;
+  }
+  .shot-wrap:hover{border-color:var(--gold-soft);box-shadow:0 24px 50px -18px rgba(0,0,0,.7), 0 0 0 1px rgba(201,164,92,.15);}
+  .screens .shot-wrap:hover{transform:translateY(-4px);}
+  .shot-wrap img{
+    width:100%;display:block;border-radius:8px;aspect-ratio:16/10;object-fit:cover;
+  }
+  .shot-wrap .zoom-tip{
+    position:absolute;right:14px;bottom:14px;font-size:11px;color:var(--text);
+    background:rgba(0,0,0,.6);padding:4px 9px;border-radius:6px;opacity:0;
+    transition:opacity .25s;pointer-events:none;backdrop-filter:blur(4px);
+  }
+  .shot-wrap:hover .zoom-tip{opacity:1;}
+  .cap{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.55;}
+
+  /* ===== 第2页 ===== */
+  .chips{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:18px;}
+  .chip{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:11px 8px;text-align:center;transition:border-color .3s, transform .3s;
+  }
+  .chip:hover{border-color:var(--gold-soft);transform:translateY(-2px);}
+  .chip b{font-size:12px;color:var(--gold);display:block;font-weight:600;}
+  .chip span{font-size:10.5px;color:var(--muted);display:block;margin-top:4px;line-height:1.4;}
+
+  .toggle-bar{display:flex;justify-content:center;margin:26px 0 20px;}
+  .toggle{
+    display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:4px;gap:2px;
+  }
+  .toggle button{
+    font-family:var(--sans);font-size:13px;font-weight:600;color:var(--muted);
+    background:transparent;border:none;padding:9px 22px;border-radius:999px;cursor:pointer;
+    transition:.3s;letter-spacing:.02em;
+  }
+  .toggle button.on{background:var(--gold);color:#14120B;}
+  .toggle button:not(.on):hover{color:var(--text);}
+
+  .cmp{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;}
+  .cmp-col{display:flex;flex-direction:column;gap:12px;position:relative;opacity:0;transform:translateY(20px);}
+  .slide.active .cmp-col{animation:rise .65s cubic-bezier(.22,.61,.36,1) forwards;}
+  .slide.active .cmp-col:nth-child(1){animation-delay:.1s;}
+  .slide.active .cmp-col:nth-child(2){animation-delay:.24s;}
+  .slide.active .cmp-col:nth-child(3){animation-delay:.38s;}
+  .cmp-col .screen-head{margin-bottom:2px;}
+  .r-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-align:center;color:var(--muted-2);}
+  .r-tag.on{color:var(--gold);}
+  .fade-slot{position:relative;width:100%;aspect-ratio:16/12;margin-top:2px;overflow:hidden;border-radius:14px;}
+  .fade-slot .shot-wrap{
+    position:absolute;inset:0;
+    transition:transform .6s cubic-bezier(.16,1,.3,1), opacity .6s cubic-bezier(.16,1,.3,1), border-color .35s, box-shadow .35s;
+  }
+  .fade-slot .r1{transform:translateX(0);opacity:1;}
+  .fade-slot .r2{transform:translateX(106%);opacity:1;}
+  .cmp-col.is-r2 .r1{transform:translateX(-106%);opacity:0;}
+  .cmp-col.is-r2 .r2{transform:translateX(0);opacity:1;}
+  .fade-slot .shot-wrap img{aspect-ratio:auto;height:100%;object-fit:contain;}
+  .stack{display:flex;flex-direction:column;gap:6px;}
+  .stack img{flex:1;min-height:0;width:100%;object-fit:contain;aspect-ratio:auto;}
+
+  /* ===== 第3页 ===== */
+  .analysis{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:30px;}
+  .ana-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;
+    opacity:0;transform:translateY(24px);
+  }
+  .slide.active .ana-card{animation:rise .7s cubic-bezier(.22,.61,.36,1) forwards;}
+  .slide.active .ana-card:nth-child(1){animation-delay:.1s;}
+  .slide.active .ana-card:nth-child(2){animation-delay:.24s;}
+  .slide.active .ana-card:nth-child(3){animation-delay:.38s;}
+  .ana-card h3{font-family:var(--serif);font-size:18px;color:var(--text);font-weight:700;}
+  .ana-card hr{border:none;border-top:1px solid var(--line);margin:14px 0 16px;}
+  .ana-row{display:flex;gap:11px;margin-bottom:15px;}
+  .ana-row:last-child{margin-bottom:0;}
+  .ana-row .dot{width:7px;height:7px;background:var(--gold);flex:none;margin-top:6px;border-radius:1px;}
+  .ana-row b{font-size:13.5px;color:var(--text);display:block;line-height:1.45;font-weight:600;}
+  .ana-row p{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.6;}
+
+  .concl{
+    margin-top:26px;border:1px solid rgba(201,164,92,.35);border-radius:14px;
+    padding:24px 28px;position:relative;overflow:hidden;
+    background:linear-gradient(120deg, rgba(201,164,92,.10), rgba(201,164,92,.02));
+  }
+  .concl .eyebrow{margin-bottom:4px;}
+  .concl-title{font-family:var(--serif);font-size:clamp(18px,2.2vw,24px);color:var(--gold);font-weight:700;margin-top:6px;}
+  .concl-text{font-size:clamp(13px,1.5vw,15.5px);color:var(--text);margin-top:12px;line-height:1.8;opacity:.95;}
+
+  /* ===== 导航 ===== */
+  .nav{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    display:flex;align-items:center;gap:18px;z-index:40;
+  }
+  .nav button{
+    width:42px;height:42px;border-radius:50%;border:1px solid var(--line);
+    background:var(--panel);color:var(--text);font-size:17px;cursor:pointer;
+    transition:.25s;backdrop-filter:blur(6px);
+  }
+  .nav button:hover{background:var(--gold);color:#14120B;border-color:var(--gold);}
+  .nav .idx{font-size:13px;color:var(--muted);letter-spacing:.22em;min-width:64px;text-align:center;font-family:var(--mono);}
+  .brand{
+    position:fixed;top:22px;left:26px;font-size:12px;color:var(--muted-2);letter-spacing:.08em;z-index:40;
+    font-family:var(--mono);
+  }
+  .progress{
+    position:fixed;top:0;left:0;height:2px;background:var(--gold);z-index:50;
+    transition:width .5s cubic-bezier(.22,.61,.36,1);width:0;
+  }
+
+  /* ===== 灯箱 ===== */
+  .lightbox{
+    position:fixed;inset:0;background:rgba(6,8,6,.94);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:44px;
+    opacity:0;visibility:hidden;transition:.4s;cursor:zoom-out;
+  }
+  .lightbox.show{opacity:1;visibility:visible;}
+  .lightbox img{
+    max-width:94vw;max-height:92vh;object-fit:contain;border-radius:10px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);transform:scale(.94);transition:transform .4s cubic-bezier(.22,.61,.36,1);
+  }
+  .lightbox.show img{transform:scale(1);}
+  .lightbox .hint{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    color:#8C9088;font-size:12px;letter-spacing:.16em;
+  }
+
+  @media (max-width:900px){
+    .screens,.cmp,.analysis{grid-template-columns:1fr;}
+    .chips{grid-template-columns:repeat(3,1fr);}
+    .slide{padding:40px 24px 90px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="stage">
+  <div class="brand">AI 模型对比实验 · 杭州城市宣传广告</div>
+
+  <!-- ============ 第 1 页 ============ -->
+  <section class="slide active">
+    <div class="wrap">
+      <div class="eyebrow">第一轮 · 自然语言测试</div>
+      <h1>同一句 <em>Prompt</em>，<br>三个模型怎么回答</h1>
+      <div class="sub">MiMo（多模态）· DeepSeek（纯文字 LLM）· 即梦AI / Seedream（生图模型）</div>
+
+      <div class="prompt-stage">
+        <div class="prompt-box">
+          <span class="quote">「</span><span id="typed"></span><span class="cursor" id="cursor"></span>
+        </div>
+      </div>
+
+      <div class="screens">
+        <div class="screen">
+          <div class="screen-head">
+            <img class="logo" src="logos/mimo_logo.png" alt="">
+            <span class="nm">MiMo</span><span class="tp">多模态模型</span>
+          </div>
+          <div class="shot-wrap" onclick="zoom('1/mimo.png')">
+            <img src="1/mimo.png" alt="MiMo 第一轮输出"><span class="zoom-tip">点击看原图</span>
+          </div>
+          <div class="cap">一次给出多方向，附应用建议（深度思考 10.2s）</div>
+        </div>
+        <div class="screen">
+          <div class="screen-head">
+            <img class="logo" src="logos/deepseek_logo.png" alt="">
+            <span class="nm">DeepSeek</span><span class="tp">纯文字大语言模型</span>
+          </div>
+          <div class="shot-wrap" onclick="zoom('1/deepseek.png')">
+            <img src="1/deepseek.png" alt="DeepSeek 第一轮输出"><span class="zoom-tip">点击看原图</span>
+          </div>
+          <div class="cap">4 个风格版本，各配适用场景</div>
+        </div>
+        <div class="screen">
+          <div class="screen-head">
+            <img class="logo gold-filter" src="logos/1280X1280.PNG" alt="">
+            <span class="nm">即梦AI（Seedream）</span><span class="tp">AI 生图模型</span>
+          </div>
+          <div class="shot-wrap" onclick="zoom('1/jimeng.png')">
+            <img src="1/jimeng.png" alt="即梦AI 第一轮输出"><span class="zoom-tip">点击看原图</span>
+          </div>
+          <div class="cap">4 个方向，逐条附说明与下一步</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 第 2 页 ============ -->
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">第二轮 · 规范性 Prompt</div>
+      <h1>把 Prompt 说清楚，<em>输出变了什么</em></h1>
+      <div class="sub">加入角色 / 任务 / 受众 / 主题 / 风格 / 限制，逐模型对照第一轮</div>
+
+      <div class="chips">
+        <div class="chip"><b>角色</b><span>专业城市品牌策划师</span></div>
+        <div class="chip"><b>任务</b><span>为杭州创作宣传广告语</span></div>
+        <div class="chip"><b>受众</b><span>18–30 岁年轻人</span></div>
+        <div class="chip"><b>主题</b><span>杭州文化 × 现代活力</span></div>
+        <div class="chip"><b>风格</b><span>朗朗上口 · 易记易传播</span></div>
+        <div class="chip"><b>限制</b><span>≤15 字 · 避免陈词滥调</span></div>
+      </div>
+
+      <div class="toggle-bar">
+        <div class="toggle">
+          <button id="btn-r1" class="on" onclick="setRound(1)">第一轮 · 自然语言</button>
+          <button id="btn-r2" onclick="setRound(2)">第二轮 · 规范性</button>
+        </div>
+      </div>
+
+      <div class="cmp">
+        <div class="cmp-col" data-model="mimo">
+          <div class="screen-head">
+            <img class="logo" src="logos/mimo_logo.png" alt=""><span class="nm">MiMo</span>
+          </div>
+          <div class="r-tag" data-rtag>第一轮 · 自然语言</div>
+          <div class="fade-slot">
+            <div class="shot-wrap r1" onclick="zoom('1/mimo.png')"><img src="1/mimo.png" alt=""></div>
+            <div class="shot-wrap r2 stack">
+              <img src="2/mimo.png" onclick="zoom('2/mimo.png')" alt="">
+              <img src="2/mimo2.png" onclick="zoom('2/mimo2.png')" alt="">
+            </div>
+          </div>
+        </div>
+        <div class="cmp-col" data-model="deepseek">
+          <div class="screen-head">
+            <img class="logo" src="logos/deepseek_logo.png" alt=""><span class="nm">DeepSeek</span>
+          </div>
+          <div class="r-tag" data-rtag>第一轮 · 自然语言</div>
+          <div class="fade-slot">
+            <div class="shot-wrap r1" onclick="zoom('1/deepseek.png')"><img src="1/deepseek.png" alt=""></div>
+            <div class="shot-wrap r2" onclick="zoom('2/DeepSeek.png')"><img src="2/DeepSeek.png" alt=""></div>
+          </div>
+        </div>
+        <div class="cmp-col" data-model="jimeng">
+          <div class="screen-head">
+            <img class="logo gold-filter" src="logos/1280X1280.PNG" alt=""><span class="nm">即梦AI（Seedream）</span>
+          </div>
+          <div class="r-tag" data-rtag>第一轮 · 自然语言</div>
+          <div class="fade-slot">
+            <div class="shot-wrap r1" onclick="zoom('1/jimeng.png')"><img src="1/jimeng.png" alt=""></div>
+            <div class="shot-wrap r2" onclick="zoom('2/jimeng.png')"><img src="2/jimeng.png" alt=""></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 第 3 页 ============ -->
+  <section class="slide">
+    <div class="wrap">
+      <div class="eyebrow">实验分析与结论</div>
+      <h1>拆解模型差异与 <em>Prompt 的真实影响</em></h1>
+      <div class="sub">结论全部来自两轮实际输出截图</div>
+
+      <div class="analysis">
+        <div class="ana-card">
+          <h3>模型类型差异</h3><hr>
+          <div class="ana-row"><span class="dot"></span><div><b>MiMo · 多模态</b><p>偏画面感与意象跨界，发散、诗意</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>DeepSeek · 纯文字</b><p>结构清晰、多版本分类，逻辑性强</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>即梦AI · 生图平台</b><p>严守字数约束，口语化、传播导向</p></div></div>
+        </div>
+        <div class="ana-card">
+          <h3>自然 vs 规范 Prompt</h3><hr>
+          <div class="ana-row"><span class="dot"></span><div><b>自然语言</b><p>自由发散、风格杂糅、针对性弱</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>规范性</b><p>聚焦受众、字数受控、创意更锐利</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>可观察变化</b><p>篇幅与结构更统一，方向更聚焦</p></div></div>
+        </div>
+        <div class="ana-card">
+          <h3>真正起作用的条件</h3><hr>
+          <div class="ana-row"><span class="dot"></span><div><b>目标受众（18–30 岁）</b><p>输出明显年轻化</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>字数限制（≤15 字）</b><p>表达更凝练</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>避用陈词（人间天堂）</b><p>逼出新颖角度</p></div></div>
+          <div class="ana-row"><span class="dot"></span><div><b>角色设定</b><p>回答更专业、更有策略</p></div></div>
+        </div>
+      </div>
+
+      <div class="concl">
+        <div class="eyebrow">本次实验对 AI 使用的启示</div>
+        <div class="concl-title">把条件写清楚，输出才可控</div>
+        <div class="concl-text">Prompt 的结构化程度，直接决定输出的可控程度：想要什么结果，就把条件写进 Prompt；同时，选对模型类型，往往比堆砌 Prompt 更关键。</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="nav">
+  <button id="prev" title="上一页">←</button>
+  <span class="idx" id="idx">01 / 03</span>
+  <button id="next" title="下一页">→</button>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeZoom()">
+  <img id="lightbox-img" src="" alt="">
+  <div class="hint">点击任意处关闭 · ESC 关闭</div>
+</div>
+
+<script>
+  /* ===== 翻页 ===== */
+  var slides = document.querySelectorAll('.slide');
+  var idxEl = document.getElementById('idx');
+  var progress = document.getElementById('progress');
+  var cur = 0, N = slides.length;
+
+  function pad(n){ return (n<10?'0':'')+n; }
+  function show(n){
+    cur = (n + N) % N;
+    slides.forEach(function(s,i){ s.classList.toggle('active', i===cur); });
+    idxEl.textContent = pad(cur+1) + ' / ' + pad(N);
+    progress.style.width = ((cur+1)/N*100) + '%';
+  }
+  document.getElementById('prev').onclick = function(){ show(cur-1); };
+  document.getElementById('next').onclick = function(){ show(cur+1); };
+  document.addEventListener('keydown', function(e){
+    if(document.getElementById('lightbox').classList.contains('show')) return;
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key==='PageDown') show(cur+1);
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp') show(cur-1);
+  });
+
+  /* ===== 打字机 ===== */
+  var PROMPT = '我想给杭州做个宣传广告，你帮我想一句广告语。';
+  (function type(){
+    var el = document.getElementById('typed'), i = 0;
+    var iv = setInterval(function(){
+      i++; el.textContent = PROMPT.slice(0, i);
+      if(i >= PROMPT.length){ clearInterval(iv); document.getElementById('cursor').style.display='none'; }
+    }, 70);
+  })();
+
+  /* ===== 第2页 第一轮/第二轮 切换 ===== */
+  function setRound(r){
+    var on2 = r === 2;
+    document.getElementById('btn-r1').classList.toggle('on', !on2);
+    document.getElementById('btn-r2').classList.toggle('on', on2);
+    document.querySelectorAll('.cmp-col').forEach(function(col){
+      col.classList.toggle('is-r2', on2);
+      col.querySelector('[data-rtag]').textContent = on2 ? '第二轮 · 规范性' : '第一轮 · 自然语言';
+      col.querySelector('[data-rtag]').classList.toggle('on', on2);
+    });
+  }
+
+  /* ===== 灯箱 ===== */
+  function zoom(src){
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('show');
+  }
+  function closeZoom(){
+    document.getElementById('lightbox').classList.remove('show');
+  }
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeZoom();
+  });
+
+  show(0);
+  setRound(1);
+</script>
+</body>
+</html>

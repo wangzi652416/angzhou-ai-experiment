@@ -118,6 +118,8 @@
   }
   .shot-wrap:hover .zoom-tip{opacity:1;}
   .cap{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.55;}
+  .best-line{font-size:12px;line-height:1.6;color:var(--text);background:rgba(201,164,92,.08);border:1px solid rgba(201,164,92,.3);border-radius:8px;padding:10px 12px;text-align:center;}
+  .best-line b{color:var(--gold);margin-right:5px;font-weight:600;}
 
   /* ===== 第2页 ===== */
   .chips{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:18px;}
@@ -303,7 +305,7 @@
         <div class="chip"><b>角色</b><span>专业城市品牌策划师</span></div>
         <div class="chip"><b>任务</b><span>为慈溪创作宣传广告语</span></div>
         <div class="chip"><b>受众</b><span>18–30 岁年轻人</span></div>
-        <div class="chip"><b>主题</b><span>慈溪文化 × 现代活力</span></div>
+        <div class="chip"><b>主题</b><span>上林湖秘色青瓷</span></div>
         <div class="chip"><b>风格</b><span>朗朗上口 · 易记易传播</span></div>
         <div class="chip"><b>限制</b><span>≤15 字 · 避免陈词滥调</span></div>
       </div>
@@ -328,6 +330,7 @@
               <img src="2/mimo2.png" onclick="zoom('2/mimo2.png')" alt="">
             </div>
           </div>
+          <div class="best-line"><b>最终推荐</b>「这抹秘色，等了你一千年」</div>
         </div>
         <div class="cmp-col" data-model="deepseek">
           <div class="screen-head">
@@ -336,8 +339,12 @@
           <div class="r-tag" data-rtag>第一轮 · 自然语言</div>
           <div class="fade-slot">
             <div class="shot-wrap r1" onclick="zoom('1/deepseek.png')"><img src="1/deepseek.png" alt=""></div>
-            <div class="shot-wrap r2" onclick="zoom('2/DeepSeek.png')"><img src="2/DeepSeek.png" alt=""></div>
+            <div class="shot-wrap r2 stack">
+              <img src="2/DeepSeek.png" onclick="zoom('2/DeepSeek.png')" alt="">
+              <img src="2/DeepSeek2.png" onclick="zoom('2/DeepSeek2.png')" alt="">
+            </div>
           </div>
+          <div class="best-line"><b>最终推荐</b>「千年窑火，烧出一抹慈溪色」</div>
         </div>
         <div class="cmp-col" data-model="jimeng">
           <div class="screen-head">
@@ -348,6 +355,7 @@
             <div class="shot-wrap r1" onclick="zoom('1/jimeng.png')"><img src="1/jimeng.png" alt=""></div>
             <div class="shot-wrap r2" onclick="zoom('2/jimeng.png')"><img src="2/jimeng.png" alt=""></div>
           </div>
+          <div class="best-line"><b>最终推荐</b>「慈溪逛一圈，青瓷杨梅甜」</div>
         </div>
       </div>
     </div>
